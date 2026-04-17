@@ -1,0 +1,89 @@
+version: "3.8"
+
+services:
+  # ============================================
+  # Ollama — Local AI Model Server
+  # ============================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: resumeforge-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    # Uncomment below if you have an NVIDIA GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ============================================
+  # ResumeForge API — Python FastAPI Backend
+  # ============================================
+  resumeforge-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: resumeforge-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - shared-data:/app/shared
+      - ./api:/app
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=mistral:7b
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ============================================
+  # n8n — Workflow Orchestration (OPTIONAL)
+  # Comment out if using your existing n8n container.
+  # If using existing n8n, connect it to the
+  # 'resumeforge-network' network manually.
+  # ============================================
+  # n8n:
+  #   image: n8nio/n8n:latest
+  #   container_name: resumeforge-n8n
+  #   ports:
+  #     - "5678:5678"
+  #   volumes:
+  #     - n8n-data:/home/node/.n8n
+  #     - shared-data:/home/node/shared
+  #   environment:
+  #     - N8N_BASIC_AUTH_ACTIVE=true
+  #     - N8N_BASIC_AUTH_USER=admin
+  #     - N8N_BASIC_AUTH_PASSWORD=resumeforge
+  #     - WEBHOOK_URL=http://localhost:5678/
+  #   depends_on:
+  #     - resumeforge-api
+  #   restart: unless-stopped
+
+volumes:
+  ollama-data:
+    name: resumeforge-ollama-data
+  shared-data:
+    name: resumeforge-shared-data
+  # n8n-data:
+  #   name: resumeforge-n8n-data
+
+networks:
+  default:
+    name: resumeforge-network

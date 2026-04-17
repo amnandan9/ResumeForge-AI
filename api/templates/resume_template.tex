@@ -1,0 +1,111 @@
+% ══════════════════════════════════════════════════════════════
+% ResumeForge AI — ATS-Friendly Resume Template
+% Jinja2 template with custom delimiters: << >> for variables, <% %> for blocks
+% ══════════════════════════════════════════════════════════════
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{tabularx}
+
+% ─── Page Setup ─────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-0.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% ─── Section Formatting ────────────────────────────────────
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% ─── Custom Commands ───────────────────────────────────────
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeItem}[1]{
+  \item\small{#1 \vspace{-2pt}}
+}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+% ═══════════════════════════════════════════════════════════
+\begin{document}
+
+% ─── Header ────────────────────────────────────────────────
+\begin{center}
+    \textbf{\Huge \scshape << name >>} \\ \vspace{1pt}
+    \small
+    <% if phone %><< phone >> $|$<% endif %>
+    <% if email %>\href{mailto:<< email >>}{\underline{<< email >>}} $|$<% endif %>
+    <% if linkedin %>\href{<< linkedin >>}{\underline{LinkedIn}} $|$<% endif %>
+    <% if github %>\href{<< github >>}{\underline{GitHub}}<% endif %>
+    <% if location %>\\ << location >><% endif %>
+\end{center}
+
+% ─── Summary ──────────────────────────────────────────────
+<% if summary %>
+\section{Professional Summary}
+\small{<< summary >>}
+<% endif %>
+
+% ─── Skills ───────────────────────────────────────────────
+<% if skills %>
+\section{Technical Skills}
+\begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+        <% for skill in skills %><< skill >><% if not loop.last %>, <% endif %><% endfor %>
+    }}
+\end{itemize}
+<% endif %>
+
+% ─── Dynamic Sections (Experience, Projects, etc.) ────────
+<% for section in sections %>
+\section{<< section.title >>}
+\resumeSubHeadingListStart
+    <% for item in section.content %>
+    \resumeItem{<< item >>}
+    <% endfor %>
+\resumeSubHeadingListEnd
+<% endfor %>
+
+% ─── Education ────────────────────────────────────────────
+<% if education %>
+\section{Education}
+\resumeSubHeadingListStart
+    <% for edu in education %>
+    \resumeSubheading
+        {<< edu.institution >>}{<< edu.year >>}
+        {<< edu.degree >>}<% if edu.gpa %>{ | GPA: << edu.gpa >>}<% else %>{}<% endif %>
+    <% endfor %>
+\resumeSubHeadingListEnd
+<% endif %>
+
+\end{document}

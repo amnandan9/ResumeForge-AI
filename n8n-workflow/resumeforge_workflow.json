@@ -1,0 +1,266 @@
+{
+  "name": "ResumeForge AI — Full Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resumeforge",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "node-1-webhook",
+      "name": "1. Resume Input Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "resumeforge-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "job_description",
+              "name": "job_description",
+              "value": "={{ $json.body.job_description }}",
+              "type": "string"
+            },
+            {
+              "id": "keywords",
+              "name": "keywords",
+              "value": "={{ $json.body.keywords || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "custom_instructions",
+              "name": "custom_instructions",
+              "value": "={{ $json.body.custom_instructions || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "section_preferences",
+              "name": "section_preferences",
+              "value": "={{ $json.body.section_preferences || '{}' }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "node-2-inputs",
+      "name": "2. Process Inputs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://resumeforge-api:8000/parse-resume",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-3-parse",
+      "name": "3. Parse Resume",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resume_text",
+              "name": "resume_text",
+              "value": "={{ $json.raw_text }}",
+              "type": "string"
+            },
+            {
+              "id": "job_description",
+              "name": "job_description",
+              "value": "={{ $('2. Process Inputs').item.json.job_description }}",
+              "type": "string"
+            },
+            {
+              "id": "keywords_array",
+              "name": "keywords",
+              "value": "={{ $('2. Process Inputs').item.json.keywords.split(',').map(k => k.trim()).filter(k => k) }}",
+              "type": "object"
+            },
+            {
+              "id": "instructions",
+              "name": "custom_instructions",
+              "value": "={{ $('2. Process Inputs').item.json.custom_instructions }}",
+              "type": "string"
+            },
+            {
+              "id": "sec_prefs",
+              "name": "section_preferences",
+              "value": "={{ JSON.parse($('2. Process Inputs').item.json.section_preferences || '{}') }}",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "id": "node-4-preprocess",
+      "name": "4. Preprocess Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://resumeforge-api:8000/optimize",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ resume_text: $json.resume_text, job_description: $json.job_description, keywords: $json.keywords, custom_instructions: $json.custom_instructions, section_preferences: $json.section_preferences }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "node-5-optimize",
+      "name": "5. AI Optimize",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate AI response and ensure all keywords are present\nconst input = $input.first().json;\nconst optimized = input.optimized || input;\n\n// Validate required fields\nconst required = ['summary', 'skills', 'sections'];\nfor (const field of required) {\n  if (!optimized[field]) {\n    throw new Error(`Missing required field: ${field}`);\n  }\n}\n\n// Ensure sections is array\nif (!Array.isArray(optimized.sections)) {\n  throw new Error('sections must be an array');\n}\n\nreturn [{ json: { optimized } }];"
+      },
+      "id": "node-6-validate",
+      "name": "6. Validate JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://resumeforge-api:8000/generate-latex",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ optimized_data: $json.optimized, template_name: 'resume_template.tex' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-7-latex",
+      "name": "7. Generate LaTeX",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://resumeforge-api:8000/generate-pdf",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ latex_content: $json.latex_content }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "node-8-pdf",
+      "name": "8. Generate PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://resumeforge-api:8000/analyze-ats",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ resume_text: $('6. Validate JSON').item.json.optimized.summary + ' ' + $('6. Validate JSON').item.json.optimized.skills.join(' ') + ' ' + $('6. Validate JSON').item.json.optimized.sections.map(s => s.content.join(' ')).join(' '), job_description: $('4. Preprocess Data').item.json.job_description, keywords: $('4. Preprocess Data').item.json.keywords }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-9-ats",
+      "name": "9. ATS Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 420]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        },
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, pipeline: 'ResumeForge AI', pdf_base64: $('8. Generate PDF').item.json.pdf_base64, pdf_filename: $('8. Generate PDF').item.json.pdf_filename, latex_content: $('7. Generate LaTeX').item.json.latex_content, ats_report: $('9. ATS Analysis').item.json.report, optimized_data: $('6. Validate JSON').item.json.optimized, suggestions: $('6. Validate JSON').item.json.optimized.suggestions || [] }) }}"
+      },
+      "id": "node-10-output",
+      "name": "10. Output Results",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "1. Resume Input Webhook": {
+      "main": [[{"node": "2. Process Inputs", "type": "main", "index": 0}]]
+    },
+    "2. Process Inputs": {
+      "main": [[{"node": "3. Parse Resume", "type": "main", "index": 0}]]
+    },
+    "3. Parse Resume": {
+      "main": [[{"node": "4. Preprocess Data", "type": "main", "index": 0}]]
+    },
+    "4. Preprocess Data": {
+      "main": [[{"node": "5. AI Optimize", "type": "main", "index": 0}]]
+    },
+    "5. AI Optimize": {
+      "main": [[{"node": "6. Validate JSON", "type": "main", "index": 0}]]
+    },
+    "6. Validate JSON": {
+      "main": [
+        [
+          {"node": "7. Generate LaTeX", "type": "main", "index": 0},
+          {"node": "9. ATS Analysis", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "7. Generate LaTeX": {
+      "main": [[{"node": "8. Generate PDF", "type": "main", "index": 0}]]
+    },
+    "8. Generate PDF": {
+      "main": [[{"node": "10. Output Results", "type": "main", "index": 0}]]
+    },
+    "9. ATS Analysis": {
+      "main": [[{"node": "10. Output Results", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ResumeForge",
+      "createdAt": "2026-04-17T00:00:00.000Z",
+      "updatedAt": "2026-04-17T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-04-17T00:00:00.000Z",
+  "versionId": "1"
+}

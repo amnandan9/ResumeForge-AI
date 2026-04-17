@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+.docker/
+
+# n8n data (persisted in Docker volumes)
+n8n-data/
+
+# Generated outputs
+output/
+*.pdf
+!test_data/*.pdf
+
+# Environment
+.env
+*.env.local
+
+# LaTeX aux files
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Internal planning docs
+implementation_plan.md
+
+# Temp files
+tmp/
+temp/
